@@ -278,7 +278,19 @@ export const assertScenePreserved = (
 }
 
 export const prepareServerScene = (
-  elements: readonly Partial<ExcalidrawElement>[]
+  elements: readonly Partial<ExcalidrawElement>[],
+  opts: {
+    /**
+     * Re-wrap and re-measure bound text from `originalText`.
+     *
+     * Off by default: on a full scene load the fonts may not be ready yet, and
+     * measuring with a fallback font would overwrite a correctly measured file
+     * with wrong numbers. Callers applying an incremental update — where a
+     * container may have been resized through the API and its label would
+     * otherwise keep the old line breaks — pass `true`.
+     */
+    refreshDimensions?: boolean
+  } = {}
 ): ExcalidrawElement[] => {
   if (!Array.isArray(elements)) throw new Error('Expected a scene element array')
   const ids = new Set<string>()
@@ -326,7 +338,7 @@ export const prepareServerScene = (
   const restored = restoreElements(
     recenterBoundShapeTextElements(ordered) as ExcalidrawElement[],
     null,
-    { repairBindings: true }
+    { repairBindings: true, refreshDimensions: opts.refreshDimensions ?? false }
   )
   assertScenePreserved(elements, restored)
   return restored
