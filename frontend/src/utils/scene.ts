@@ -335,8 +335,26 @@ export const prepareServerScene = (
     if (!next) throw new Error(`Scene conversion lost element ${element.id}`)
     return [next, ...(generatedText.get(element.id!) || [])]
   })
+  // Excalidraw's `refreshTextDimensions` re-wraps `element.text`, not
+  // `originalText` — and `text` already carries the line breaks computed for the
+  // previous container size, as real newlines. Wrapping an already-wrapped
+  // string can never undo those breaks, so `refreshDimensions` on its own
+  // cannot re-flow a label after its container is resized. Feeding the label
+  // its unwrapped source first is what makes the re-flow actually happen.
+  const reflowed = opts.refreshDimensions
+    ? ordered.map(element => {
+        const label = element as Partial<ExcalidrawElement> & {
+          containerId?: string | null
+          originalText?: string
+        }
+        return label?.containerId && typeof label.originalText === 'string'
+          ? { ...element, text: label.originalText }
+          : element
+      })
+    : ordered
+
   const restored = restoreElements(
-    recenterBoundShapeTextElements(ordered) as ExcalidrawElement[],
+    recenterBoundShapeTextElements(reflowed) as ExcalidrawElement[],
     null,
     { repairBindings: true, refreshDimensions: opts.refreshDimensions ?? false }
   )
